@@ -11,6 +11,7 @@ import java.awt.geom.RoundRectangle2D;
 public class PillTextField extends JTextField {
     private String placeholder = "";
     private boolean isFocused = false;
+    private boolean showSearchIcon = false;
 
     public PillTextField(int columns) {
         super(columns);
@@ -28,7 +29,7 @@ public class PillTextField extends JTextField {
         setForeground(Theme.TEXT_PRIMARY);
         setCaretColor(Theme.BRAND_ACCENT);
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(10, 18, 10, 18));
+        updateBorder();
 
         addFocusListener(new FocusAdapter() {
             @Override
@@ -43,6 +44,21 @@ public class PillTextField extends JTextField {
                 repaint();
             }
         });
+    }
+
+    private void updateBorder() {
+        int leftPad = showSearchIcon ? 38 : 18;
+        setBorder(BorderFactory.createEmptyBorder(10, leftPad, 10, 18));
+    }
+
+    public void setShowSearchIcon(boolean showSearchIcon) {
+        this.showSearchIcon = showSearchIcon;
+        updateBorder();
+        repaint();
+    }
+
+    public boolean isShowSearchIcon() {
+        return showSearchIcon;
     }
 
     public void setPlaceholder(String placeholder) {
@@ -68,15 +84,28 @@ public class PillTextField extends JTextField {
         g2.setStroke(new BasicStroke(isFocused ? 1.8f : 1.2f));
         g2.draw(new RoundRectangle2D.Float(1, 1, width - 2, height - 2, radius, radius));
 
+        // Draw search magnifying glass icon if enabled
+        if (showSearchIcon) {
+            g2.setColor(isFocused ? Theme.BRAND_ACCENT : Theme.TEXT_MUTED);
+            g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            int centerY = height / 2;
+            int circleR = 9;
+            int circleX = 14;
+            int circleY = centerY - 6;
+            g2.drawOval(circleX, circleY, circleR, circleR);
+            g2.drawLine(circleX + 7, circleY + 7, circleX + 13, circleY + 13);
+        }
+
         super.paintComponent(g);
 
-        // Draw placeholder if text is empty and not focused
-        if (getText().isEmpty() && !placeholder.isEmpty() && !isFocused) {
+        // Draw placeholder if text is empty (regardless of focus, disappears when typing)
+        if (getText().isEmpty() && !placeholder.isEmpty()) {
             g2.setColor(Theme.TEXT_MUTED);
             g2.setFont(Theme.fontBody());
             FontMetrics fm = g2.getFontMetrics();
             int y = (height + fm.getAscent() - fm.getDescent()) / 2;
-            g2.drawString(placeholder, 18, y);
+            int startX = showSearchIcon ? 38 : 18;
+            g2.drawString(placeholder, startX, y);
         }
 
         g2.dispose();

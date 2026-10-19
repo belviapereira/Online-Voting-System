@@ -29,6 +29,7 @@ public class Theme {
 
     // Status Badges
     public static final Color STATUS_SUCCESS = new Color(0x2E, 0x7D, 0x32);
+    public static final Color SUCCESS_GREEN = STATUS_SUCCESS;
     public static final Color STATUS_ERROR = new Color(0xD3, 0x2F, 0x2F);
 
     // Typography

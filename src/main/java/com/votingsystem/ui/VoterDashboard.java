@@ -16,6 +16,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +57,12 @@ public class VoterDashboard extends JFrame {
     private JLabel searchStatusLabel;
     private PillButton clearSearchBtn;
     private String currentSearchQuery = "";
+
+    // Global Search and Navigation State
+    private String currentNav = "DASHBOARD";
+    private String previousNav = "DASHBOARD";
+    private JPanel globalSearchResultsContainer;
+    private JLabel globalSearchCountLabel;
 
     // Right stats rail widgets
     private JPanel statsContainer;
@@ -98,6 +105,7 @@ public class VoterDashboard extends JFrame {
         viewsContainer.add(createVoteView(), "VOTE");
         viewsContainer.add(createGuidelinesView(), "GUIDELINES");
         viewsContainer.add(createSettingsView(), "SETTINGS");
+        viewsContainer.add(createGlobalSearchView(), "SEARCH");
 
         bodyPanel.add(viewsContainer, BorderLayout.CENTER);
         canvas.add(bodyPanel, BorderLayout.CENTER);
@@ -137,6 +145,7 @@ public class VoterDashboard extends JFrame {
         JPanel center = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 2));
         center.setOpaque(false);
         searchField = new PillTextField("Search elections, candidates, party...", 30);
+        searchField.setShowSearchIcon(true);
         searchField.setPreferredSize(new Dimension(420, 38));
 
         // Live real-time search listener
@@ -251,9 +260,15 @@ public class VoterDashboard extends JFrame {
         this.currentSearchQuery = query;
 
         if (!query.isEmpty()) {
-            setActiveNav("VOTE");
-            filterCandidates(query);
+            if (!"SEARCH".equals(currentNav)) {
+                previousNav = currentNav;
+            }
+            performGlobalSearch(query);
+            setActiveNav("SEARCH");
         } else {
+            if ("SEARCH".equals(currentNav)) {
+                setActiveNav(previousNav != null && !"SEARCH".equals(previousNav) ? previousNav : "DASHBOARD");
+            }
             loadCandidatesForSelectedElection();
         }
     }
@@ -358,6 +373,10 @@ public class VoterDashboard extends JFrame {
     }
 
     private void setActiveNav(String viewName) {
+        if (!"SEARCH".equals(viewName)) {
+            this.previousNav = viewName;
+        }
+        this.currentNav = viewName;
         contentCardLayout.show(viewsContainer, viewName);
 
         navDashboardBtn.setStyle("DASHBOARD".equals(viewName) ? PillButton.Style.GRADIENT : PillButton.Style.SECONDARY);
@@ -365,7 +384,9 @@ public class VoterDashboard extends JFrame {
         navGuidelinesBtn.setStyle("GUIDELINES".equals(viewName) ? PillButton.Style.GRADIENT : PillButton.Style.SECONDARY);
         navSettingsBtn.setStyle("SETTINGS".equals(viewName) ? PillButton.Style.GRADIENT : PillButton.Style.SECONDARY);
 
-        refreshData();
+        if (!"SEARCH".equals(viewName)) {
+            refreshData();
+        }
     }
 
     // ==========================================
@@ -1005,6 +1026,216 @@ public class VoterDashboard extends JFrame {
 
         panel.add(card, BorderLayout.CENTER);
         return panel;
+    }
+
+    // ==========================================
+    // VIEW 5: GLOBAL SEARCH
+    // ==========================================
+    private JPanel createGlobalSearchView() {
+        JPanel panel = new JPanel(new BorderLayout(0, 16));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(16, 24, 20, 24));
+
+        // Top Search Header Card
+        RoundedPanel headerCard = new RoundedPanel(20, Theme.CARD_BG, Theme.CARD_BORDER, true);
+        headerCard.setLayout(new BorderLayout(16, 0));
+        headerCard.setBorder(new EmptyBorder(16, 22, 16, 22));
+
+        JPanel headerText = new JPanel();
+        headerText.setLayout(new BoxLayout(headerText, BoxLayout.Y_AXIS));
+        headerText.setOpaque(false);
+
+        JLabel title = new JLabel("Search Results");
+        title.setFont(Theme.fontHero());
+        title.setForeground(Theme.PRIMARY_NAVY);
+
+        globalSearchCountLabel = new JLabel("Search across elections, candidates, and parties in real time.");
+        globalSearchCountLabel.setFont(Theme.fontBody());
+        globalSearchCountLabel.setForeground(Theme.TEXT_SECONDARY);
+
+        headerText.add(title);
+        headerText.add(Box.createVerticalStrut(4));
+        headerText.add(globalSearchCountLabel);
+
+        PillButton clearBtn = new PillButton("✕ Clear Search", PillButton.Style.OUTLINE);
+        clearBtn.setPreferredSize(new Dimension(130, 36));
+        clearBtn.addActionListener(e -> {
+            searchField.setText("");
+            setActiveNav(previousNav != null && !"SEARCH".equals(previousNav) ? previousNav : "DASHBOARD");
+        });
+
+        headerCard.add(headerText, BorderLayout.CENTER);
+        headerCard.add(clearBtn, BorderLayout.EAST);
+
+        panel.add(headerCard, BorderLayout.NORTH);
+
+        // Scrollable Results Panel
+        globalSearchResultsContainer = new JPanel();
+        globalSearchResultsContainer.setLayout(new BoxLayout(globalSearchResultsContainer, BoxLayout.Y_AXIS));
+        globalSearchResultsContainer.setOpaque(false);
+
+        JScrollPane scrollPane = new JScrollPane(globalSearchResultsContainer);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void performGlobalSearch(String query) {
+        if (globalSearchResultsContainer == null) return;
+        globalSearchResultsContainer.removeAll();
+
+        String q = query.toLowerCase().trim();
+        List<Election> allElections = electionDAO.getAllElections();
+        List<Election> matchedElections = allElections.stream()
+                .filter(el -> el.getTitle().toLowerCase().contains(q))
+                .toList();
+
+        class Match {
+            final Candidate candidate;
+            final Election election;
+            Match(Candidate c, Election el) { this.candidate = c; this.election = el; }
+        }
+        List<Match> matchedCandidates = new ArrayList<>();
+
+        for (Election el : allElections) {
+            List<Candidate> candidates = electionDAO.getCandidatesForElection(el.getId());
+            for (Candidate c : candidates) {
+                boolean nameMatch = c.getName().toLowerCase().contains(q);
+                boolean partyMatch = c.getParty() != null && c.getParty().toLowerCase().contains(q);
+                boolean electionMatch = el.getTitle().toLowerCase().contains(q);
+                if (nameMatch || partyMatch || electionMatch) {
+                    matchedCandidates.add(new Match(c, el));
+                }
+            }
+        }
+
+        if (globalSearchCountLabel != null) {
+            globalSearchCountLabel.setText("Found " + matchedElections.size() + " election(s) and " + matchedCandidates.size() + " candidate(s) matching \"" + query + "\"");
+        }
+
+        if (matchedElections.isEmpty() && matchedCandidates.isEmpty()) {
+            RoundedPanel emptyCard = new RoundedPanel(20, Theme.CARD_BG, Theme.CARD_BORDER, true);
+            emptyCard.setLayout(new BoxLayout(emptyCard, BoxLayout.Y_AXIS));
+            emptyCard.setBorder(new EmptyBorder(32, 24, 32, 24));
+            emptyCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+            emptyCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+
+            JLabel emptyTitle = new JLabel("No matches found for \"" + query + "\"");
+            emptyTitle.setFont(Theme.fontSubheading());
+            emptyTitle.setForeground(Theme.PRIMARY_NAVY);
+            emptyTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel emptySub = new JLabel("Try searching by candidate full name, political party, or election title.");
+            emptySub.setFont(Theme.fontBody());
+            emptySub.setForeground(Theme.TEXT_MUTED);
+            emptySub.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            PillButton clearBtn = new PillButton("Clear Search", PillButton.Style.PRIMARY);
+            clearBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+            clearBtn.setPreferredSize(new Dimension(140, 36));
+            clearBtn.setMaximumSize(new Dimension(140, 36));
+            clearBtn.addActionListener(e -> {
+                searchField.setText("");
+                setActiveNav(previousNav != null && !"SEARCH".equals(previousNav) ? previousNav : "DASHBOARD");
+            });
+
+            emptyCard.add(emptyTitle);
+            emptyCard.add(Box.createVerticalStrut(8));
+            emptyCard.add(emptySub);
+            emptyCard.add(Box.createVerticalStrut(18));
+            emptyCard.add(clearBtn);
+
+            globalSearchResultsContainer.add(emptyCard);
+        } else {
+            // 1. Matching Elections
+            if (!matchedElections.isEmpty()) {
+                JLabel secElections = new JLabel("Matching Elections (" + matchedElections.size() + ")");
+                secElections.setFont(Theme.fontSubheading());
+                secElections.setForeground(Theme.PRIMARY_NAVY);
+                secElections.setAlignmentX(Component.LEFT_ALIGNMENT);
+                globalSearchResultsContainer.add(secElections);
+                globalSearchResultsContainer.add(Box.createVerticalStrut(10));
+
+                for (Election el : matchedElections) {
+                    RoundedPanel elCard = new RoundedPanel(16, Theme.CARD_BG, Theme.CARD_BORDER, true);
+                    elCard.setLayout(new BorderLayout(16, 0));
+                    elCard.setBorder(new EmptyBorder(14, 18, 14, 18));
+                    elCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
+                    elCard.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+                    JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+                    info.setOpaque(false);
+                    JLabel elTitle = new JLabel(el.getTitle());
+                    elTitle.setFont(Theme.fontBodyBold());
+                    elTitle.setForeground(Theme.TEXT_PRIMARY);
+
+                    JLabel statusPill = new JLabel(el.isActive() ? "● Ongoing" : "● Concluded");
+                    statusPill.setFont(Theme.fontCaption());
+                    statusPill.setForeground(el.isActive() ? Theme.SUCCESS_GREEN : Theme.TEXT_MUTED);
+
+                    List<Candidate> cList = electionDAO.getCandidatesForElection(el.getId());
+                    JLabel countLbl = new JLabel("(" + cList.size() + " candidates)");
+                    countLbl.setFont(Theme.fontCaption());
+                    countLbl.setForeground(Theme.TEXT_MUTED);
+
+                    info.add(elTitle);
+                    info.add(statusPill);
+                    info.add(countLbl);
+
+                    elCard.add(info, BorderLayout.WEST);
+
+                    if (el.isActive()) {
+                        PillButton openBtn = new PillButton("Vote in this Election", PillButton.Style.GRADIENT);
+                        openBtn.setPreferredSize(new Dimension(170, 34));
+                        openBtn.addActionListener(e -> {
+                            searchField.setText("");
+                            voteElectionCombo.setSelectedItem(el);
+                            setActiveNav("VOTE");
+                        });
+                        elCard.add(openBtn, BorderLayout.EAST);
+                    } else {
+                        JLabel closedLbl = new JLabel("Polls Closed");
+                        closedLbl.setFont(Theme.fontCaption());
+                        closedLbl.setForeground(Theme.TEXT_MUTED);
+                        elCard.add(closedLbl, BorderLayout.EAST);
+                    }
+
+                    globalSearchResultsContainer.add(elCard);
+                    globalSearchResultsContainer.add(Box.createVerticalStrut(8));
+                }
+                globalSearchResultsContainer.add(Box.createVerticalStrut(16));
+            }
+
+            // 2. Matching Candidates
+            if (!matchedCandidates.isEmpty()) {
+                JLabel secCandidates = new JLabel("Matching Candidates (" + matchedCandidates.size() + ")");
+                secCandidates.setFont(Theme.fontSubheading());
+                secCandidates.setForeground(Theme.PRIMARY_NAVY);
+                secCandidates.setAlignmentX(Component.LEFT_ALIGNMENT);
+                globalSearchResultsContainer.add(secCandidates);
+                globalSearchResultsContainer.add(Box.createVerticalStrut(10));
+
+                JPanel cardsFlow = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 16));
+                cardsFlow.setOpaque(false);
+                cardsFlow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+                for (Match match : matchedCandidates) {
+                    boolean hasVoted = voteDAO.hasVoted(match.election.getId(), currentUser.getId());
+                    cardsFlow.add(new CandidateCard(match.candidate, match.election.getTitle(), hasVoted, c -> {
+                        handleCastVote(c);
+                        performGlobalSearch(currentSearchQuery);
+                    }));
+                }
+                globalSearchResultsContainer.add(cardsFlow);
+            }
+        }
+
+        globalSearchResultsContainer.revalidate();
+        globalSearchResultsContainer.repaint();
     }
 
     // ==========================================

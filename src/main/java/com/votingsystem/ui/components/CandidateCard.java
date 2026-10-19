@@ -14,16 +14,31 @@ public class CandidateCard extends RoundedPanel {
     private final PillButton detailsBtn;
 
     public CandidateCard(Candidate candidate, boolean hasVoted, Consumer<Candidate> onVote) {
+        this(candidate, null, hasVoted, onVote);
+    }
+
+    public CandidateCard(Candidate candidate, String electionTitle, boolean hasVoted, Consumer<Candidate> onVote) {
         super(20, Theme.CARD_BG, Theme.CARD_BORDER, true);
         this.candidate = candidate;
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(new EmptyBorder(22, 18, 22, 18));
-        setPreferredSize(new Dimension(200, 260));
-        setMaximumSize(new Dimension(220, 280));
+        setBorder(new EmptyBorder(18, 16, 18, 16));
+        int height = electionTitle != null ? 290 : 260;
+        setPreferredSize(new Dimension(205, height));
+        setMaximumSize(new Dimension(225, height + 20));
+
+        // Optional election title pill
+        if (electionTitle != null && !electionTitle.isEmpty()) {
+            JLabel electPill = new JLabel(electionTitle);
+            electPill.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            electPill.setForeground(Theme.BRAND_ACCENT);
+            electPill.setAlignmentX(Component.CENTER_ALIGNMENT);
+            add(electPill);
+            add(Box.createVerticalStrut(8));
+        }
 
         // 1. Candidate Avatar
-        CircularAvatar avatar = new CircularAvatar(candidate.getName(), 68);
+        CircularAvatar avatar = new CircularAvatar(candidate.getName(), 64);
         avatar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // 2. Candidate Name
@@ -52,10 +67,12 @@ public class CandidateCard extends RoundedPanel {
 
         detailsBtn = new PillButton("View Details", PillButton.Style.OUTLINE);
         detailsBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        detailsBtn.setPreferredSize(new Dimension(150, 34));
-        detailsBtn.setMaximumSize(new Dimension(160, 34));
+        detailsBtn.setPreferredSize(new Dimension(150, 32));
+        detailsBtn.setMaximumSize(new Dimension(160, 32));
         detailsBtn.addActionListener(e -> {
+            String titleContext = electionTitle != null ? "Election: " + electionTitle + "\n" : "";
             JOptionPane.showMessageDialog(this,
+                    titleContext +
                     "Candidate: " + candidate.getName() + "\n" +
                     "Affiliation / Party: " + candidate.getParty() + "\n\n" +
                     "Platform Statement:\n\"Dedicated to transparent student leadership, digital access, and institutional advocacy.\"",
@@ -64,11 +81,11 @@ public class CandidateCard extends RoundedPanel {
         });
 
         add(avatar);
-        add(Box.createVerticalStrut(12));
+        add(Box.createVerticalStrut(10));
         add(nameLabel);
         add(Box.createVerticalStrut(4));
         add(partyLabel);
-        add(Box.createVerticalStrut(18));
+        add(Box.createVerticalStrut(14));
         add(voteBtn);
         add(Box.createVerticalStrut(8));
         add(detailsBtn);

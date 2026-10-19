@@ -5,6 +5,8 @@ import com.votingsystem.model.User;
 import com.votingsystem.util.PasswordUtil;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
     public boolean registerUser(String username, String plainPassword, String role) {
@@ -55,5 +57,23 @@ public class UserDAO {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    public List<User> getAllUsers() {
+        List<User> list = new ArrayList<>();
+        String sql = "SELECT id, username, password, role FROM users ORDER BY id ASC";
+        try (Connection conn = Database.getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                list.add(new User(
+                    rs.getInt("id"),
+                    rs.getString("username"),
+                    rs.getString("password"),
+                    rs.getString("role")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }

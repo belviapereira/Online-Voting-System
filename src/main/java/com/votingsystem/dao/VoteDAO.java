@@ -63,4 +63,18 @@ public class VoteDAO {
         }
         return 0;
     }
+
+    public int getTotalVotesForElection(int electionId) {
+        String sql = "SELECT COUNT(*) FROM votes WHERE election_id = ?";
+        try (Connection conn = Database.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, electionId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }

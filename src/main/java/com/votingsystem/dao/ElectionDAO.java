@@ -75,7 +75,7 @@ public class ElectionDAO {
 
     public List<Election> getAllElections() {
         List<Election> list = new ArrayList<>();
-        String sql = "SELECT * FROM elections";
+        String sql = "SELECT * FROM elections ORDER BY id DESC";
         try (Connection conn = Database.getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 list.add(new Election(rs.getInt("id"), rs.getString("title"), rs.getInt("is_active") == 1));
@@ -84,5 +84,95 @@ public class ElectionDAO {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public boolean toggleElectionStatus(int electionId, boolean isActive) {
+        String sql = "UPDATE elections SET is_active = ? WHERE id = ?";
+        try (Connection conn = Database.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, isActive ? 1 : 0);
+            pstmt.setInt(2, electionId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteElection(int electionId) {
+        // Delete votes and candidates first to ensure clean cascade in SQLite
+        String deleteVotesSql = "DELETE FROM votes WHERE election_id = ?";
+        String deleteCandidatesSql = "DELETE FROM candidates WHERE election_id = ?";
+        String deleteElectionSql = "DELETE FROM elections WHERE id = ?";
+        try (Connection conn = Database.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement pVotes = conn.prepareStatement(deleteVotesSql);
+                 PreparedStatement pCandidates = conn.prepareStatement(deleteCandidatesSql);
+                 PreparedStatement pElection = conn.prepareStatement(deleteElectionSql)) {
+                
+                pVotes.setInt(1, electionId);
+                pVotes.executeUpdate();
+
+                pCandidates.setInt(1, electionId);
+                pCandidates.executeUpdate();
+
+                pElection.setInt(1, electionId);
+                int affected = pElection.executeUpdate();
+
+                conn.commit();
+                return affected > 0;
+            } catch (SQLException ex) {
+                conn.rollback();
+                ex.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteCandidate(int candidateId) {
+        String deleteVotesSql = "DELETE FROM votes WHERE candidate_id = ?";
+        String deleteCandidateSql = "DELETE FROM candidates WHERE id = ?";
+        try (Connection conn = Database.getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement pVotes = conn.prepareStatement(deleteVotesSql);
+                 PreparedStatement pCand = conn.prepareStatement(deleteCandidateSql)) {
+
+                pVotes.setInt(1, candidateId);
+                pVotes.executeUpdate();
+
+                pCand.setInt(1, candidateId);
+                int affected = pCand.executeUpdate();
+
+                conn.commit();
+                return affected > 0;
+            } catch (SQLException ex) {
+                conn.rollback();
+                ex.printStackTrace();
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public Election getElectionById(int electionId) {
+        String sql = "SELECT * FROM elections WHERE id = ?";
+        try (Connection conn = Database.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, electionId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return new Election(rs.getInt("id"), rs.getString("title"), rs.getInt("is_active") == 1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

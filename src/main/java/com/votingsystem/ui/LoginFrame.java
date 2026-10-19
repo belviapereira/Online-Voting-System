@@ -403,7 +403,7 @@ public class LoginFrame extends JFrame {
         if (user != null) {
             dispose();
             if ("ADMIN".equalsIgnoreCase(user.getRole())) {
-                new AdminDashboard().setVisible(true);
+                new AdminDashboard(user).setVisible(true);
             } else {
                 new VoterDashboard(user).setVisible(true);
             }

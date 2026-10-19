@@ -13,7 +13,8 @@ public class PillButton extends JButton {
         GRADIENT,
         OUTLINE,
         SECONDARY,
-        DARK
+        DARK,
+        PRIMARY  // Alias for GRADIENT — used by admin/search clear buttons
     }
 
     private Style style;
@@ -111,6 +112,14 @@ public class PillButton extends JButton {
             case DARK -> {
                 Color bg = isPressed ? Theme.PRIMARY_NAVY.darker() :
                            isHovered ? new Color(0x27, 0x33, 0x6E) : Theme.PRIMARY_NAVY;
+                g2.setColor(bg);
+                g2.fill(shape);
+                setForeground(Color.WHITE);
+            }
+            case PRIMARY -> {
+                // Renders like GRADIENT but with solid BRAND_ACCENT fill — used for emphasis actions
+                Color bg = isPressed ? Theme.BRAND_ACCENT.darker() :
+                           isHovered ? Theme.BRAND_GRADIENT_START.brighter() : Theme.BRAND_ACCENT;
                 g2.setColor(bg);
                 g2.fill(shape);
                 setForeground(Color.WHITE);
