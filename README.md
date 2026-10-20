@@ -4,10 +4,10 @@ A secure, modern Online Voting System built with **Java Swing** and **SQLite**, 
 
 ## Key Features
 
-- **Modern iVOTE UI/UX Design**:
-  - Indigo & vibrant violet color palette with pill-shaped rounded components.
-  - Custom Java Swing vector illustrations, smooth antialiased rendering, and segmented controls.
-  - Interactive voter dashboard featuring real-time candidate search, collapsible sidebar, notifications, and profile details.
+- **Fully Custom Java Swing UI — No External UI Library**:
+  - Every visual element — rounded cards, pill buttons, capsule inputs, avatars, and bar charts — is hand-drawn using `Graphics2D` and `paintComponent` overrides; zero dependence on a third-party look-and-feel.
+  - Indigo & violet brand palette defined in a central `Theme.java` design system (colors, fonts, shadows) consumed consistently across all 12 custom components.
+  - Smooth antialiased rendering, hover/press button states, focus-highlighted inputs, and a decorative ballot-box illustration — all rendered with pure Java2D.
 - **Election Integrity & Secret Ballot Protocol**:
   - Live rolling vote tallies are hidden from voters during active ongoing election sessions to eliminate the bandwagon effect, tactical voting, and voter apathy.
   - Real-time countdown to session close, with final verified results published once the election concludes.
