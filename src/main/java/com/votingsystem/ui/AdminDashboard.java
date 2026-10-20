@@ -680,9 +680,10 @@ public class AdminDashboard extends JFrame {
 
         // Top: Add Candidate Form Card
         RoundedPanel addCard = new RoundedPanel(20, Theme.CARD_BG, Theme.CARD_BORDER, true);
-        addCard.setLayout(new BorderLayout(16, 0));
+        addCard.setLayout(new BorderLayout(0, 10));
         addCard.setBorder(new EmptyBorder(18, 22, 18, 22));
 
+        // Row 1: title + subtitle
         JPanel formText = new JPanel();
         formText.setLayout(new BoxLayout(formText, BoxLayout.Y_AXIS));
         formText.setOpaque(false);
@@ -691,20 +692,26 @@ public class AdminDashboard extends JFrame {
         title.setFont(Theme.fontHero());
         title.setForeground(Theme.PRIMARY_NAVY);
 
-        JLabel sub = new JLabel("Assign candidates to verified election cycles with party affiliations.");
+        JLabel sub = new JLabel("Select the election, enter the candidate name and party affiliation, then click Add Candidate.");
         sub.setFont(Theme.fontBody());
         sub.setForeground(Theme.TEXT_SECONDARY);
 
         formText.add(title);
-        formText.add(Box.createVerticalStrut(4));
+        formText.add(Box.createVerticalStrut(3));
         formText.add(sub);
+        addCard.add(formText, BorderLayout.NORTH);
 
-        JPanel inputsRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 4));
+        // Row 2: election dropdown (labelled) + name field + party field + button — all in one row
+        JPanel inputsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         inputsRow.setOpaque(false);
+
+        JLabel elLabel = new JLabel("Election:");
+        elLabel.setFont(Theme.fontBody());
+        elLabel.setForeground(Theme.TEXT_SECONDARY);
 
         candidateElectionSelectCombo = new JComboBox<>();
         candidateElectionSelectCombo.setFont(Theme.fontBody());
-        candidateElectionSelectCombo.setPreferredSize(new Dimension(200, 38));
+        candidateElectionSelectCombo.setPreferredSize(new Dimension(220, 38));
 
         newCandidateNameField = new PillTextField("Candidate Name", 14);
         newCandidateNameField.setPreferredSize(new Dimension(170, 38));
@@ -716,13 +723,13 @@ public class AdminDashboard extends JFrame {
         addBtn.setPreferredSize(new Dimension(140, 38));
         addBtn.addActionListener(e -> handleAddCandidate());
 
+        inputsRow.add(elLabel);
         inputsRow.add(candidateElectionSelectCombo);
         inputsRow.add(newCandidateNameField);
         inputsRow.add(newCandidatePartyField);
         inputsRow.add(addBtn);
 
-        addCard.add(formText, BorderLayout.WEST);
-        addCard.add(inputsRow, BorderLayout.EAST);
+        addCard.add(inputsRow, BorderLayout.CENTER);
         panel.add(addCard, BorderLayout.NORTH);
 
         // Bottom: Registered Candidates Grid with Filter Dropdown
@@ -1553,12 +1560,13 @@ public class AdminDashboard extends JFrame {
 
     private JPanel createDashboardElectionRow(Election el) {
         RoundedPanel row = new RoundedPanel(16, Theme.CARD_BG, Theme.CARD_BORDER, true);
-        row.setLayout(new BorderLayout(14, 0));
+        row.setLayout(new BorderLayout(0, 6));
         row.setBorder(new EmptyBorder(12, 16, 12, 16));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
+        // No fixed max height — let it grow to fit both info and button rows
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 2));
-        left.setOpaque(false);
+        // Top row: title + status + candidate count
+        JPanel infoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        infoRow.setOpaque(false);
 
         JLabel title = new JLabel(el.getTitle());
         title.setFont(Theme.fontBodyBold());
@@ -1573,31 +1581,33 @@ public class AdminDashboard extends JFrame {
         candCount.setFont(Theme.fontCaption());
         candCount.setForeground(Theme.TEXT_MUTED);
 
-        left.add(title);
-        left.add(status);
-        left.add(candCount);
-        row.add(left, BorderLayout.WEST);
+        infoRow.add(title);
+        infoRow.add(status);
+        infoRow.add(candCount);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        right.setOpaque(false);
+        // Bottom row: action buttons aligned right
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btnRow.setOpaque(false);
 
         PillButton toggleBtn = new PillButton(el.isActive() ? "Conclude" : "Reopen", PillButton.Style.OUTLINE);
-        toggleBtn.setPreferredSize(new Dimension(90, 28));
+        toggleBtn.setPreferredSize(new Dimension(100, 28));
         toggleBtn.addActionListener(e -> {
             electionDAO.toggleElectionStatus(el.getId(), !el.isActive());
             refreshAllData();
         });
 
         PillButton viewBtn = new PillButton("Results", PillButton.Style.PRIMARY);
-        viewBtn.setPreferredSize(new Dimension(80, 28));
+        viewBtn.setPreferredSize(new Dimension(88, 28));
         viewBtn.addActionListener(e -> {
             analyticsElectionCombo.setSelectedItem(el);
             setActiveNav("RESULTS");
         });
 
-        right.add(toggleBtn);
-        right.add(viewBtn);
-        row.add(right, BorderLayout.EAST);
+        btnRow.add(toggleBtn);
+        btnRow.add(viewBtn);
+
+        row.add(infoRow, BorderLayout.NORTH);
+        row.add(btnRow, BorderLayout.SOUTH);
 
         return row;
     }
@@ -1645,49 +1655,12 @@ public class AdminDashboard extends JFrame {
         } else {
             for (Election el : allElections) {
                 RoundedPanel card = new RoundedPanel(16, Theme.CARD_BG, Theme.CARD_BORDER, true);
-                card.setLayout(new BorderLayout(16, 0));
-                card.setBorder(new EmptyBorder(14, 18, 14, 18));
-                card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
+                card.setLayout(new BorderLayout(0, 6));
+                card.setBorder(new EmptyBorder(12, 18, 12, 18));
+                // No fixed max height — card grows to show both info and button rows cleanly
 
-                // Fixed-size actions panel on the EAST — always fully visible
-                JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-                actions.setOpaque(false);
-
-                PillButton toggleBtn = new PillButton(el.isActive() ? "Conclude Election" : "Reopen Election", PillButton.Style.OUTLINE);
-                toggleBtn.setPreferredSize(new Dimension(148, 32));
-                toggleBtn.addActionListener(e -> {
-                    electionDAO.toggleElectionStatus(el.getId(), !el.isActive());
-                    refreshAllData();
-                });
-
-                PillButton resultsBtn = new PillButton("View Analytics", PillButton.Style.GRADIENT);
-                resultsBtn.setPreferredSize(new Dimension(128, 32));
-                resultsBtn.addActionListener(e -> {
-                    analyticsElectionCombo.setSelectedItem(el);
-                    setActiveNav("RESULTS");
-                });
-
-                PillButton deleteBtn = new PillButton("Delete", PillButton.Style.OUTLINE);
-                deleteBtn.setPreferredSize(new Dimension(76, 32));
-                deleteBtn.addActionListener(e -> {
-                    int confirm = JOptionPane.showConfirmDialog(this,
-                            "Are you sure you want to permanently delete \"" + el.getTitle() + "\"?\nAll associated candidate and ballot records will be removed.",
-                            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-                    if (confirm == JOptionPane.YES_OPTION) {
-                        electionDAO.deleteElection(el.getId());
-                        refreshAllData();
-                    }
-                });
-
-                actions.add(toggleBtn);
-                actions.add(resultsBtn);
-                actions.add(deleteBtn);
-                // Give actions a fixed preferred width so BorderLayout reserves it reliably
-                actions.setPreferredSize(new Dimension(380, 38));
-                card.add(actions, BorderLayout.EAST);
-
-                // Info panel takes only remaining space — truncates gracefully on narrow windows
-                JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 4));
+                // Top row: id badge, title, status, vote count
+                JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
                 info.setOpaque(false);
 
                 JLabel idBadge = new JLabel("#" + el.getId());
@@ -1711,8 +1684,42 @@ public class AdminDashboard extends JFrame {
                 info.add(title);
                 info.add(status);
                 info.add(votesLbl);
+                card.add(info, BorderLayout.NORTH);
 
-                card.add(info, BorderLayout.CENTER);
+                // Bottom row: all three action buttons aligned to the right
+                JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+                actions.setOpaque(false);
+
+                PillButton toggleBtn = new PillButton(el.isActive() ? "Conclude Election" : "Reopen Election", PillButton.Style.OUTLINE);
+                toggleBtn.setPreferredSize(new Dimension(148, 30));
+                toggleBtn.addActionListener(e -> {
+                    electionDAO.toggleElectionStatus(el.getId(), !el.isActive());
+                    refreshAllData();
+                });
+
+                PillButton resultsBtn = new PillButton("View Analytics", PillButton.Style.GRADIENT);
+                resultsBtn.setPreferredSize(new Dimension(128, 30));
+                resultsBtn.addActionListener(e -> {
+                    analyticsElectionCombo.setSelectedItem(el);
+                    setActiveNav("RESULTS");
+                });
+
+                PillButton deleteBtn = new PillButton("Delete", PillButton.Style.OUTLINE);
+                deleteBtn.setPreferredSize(new Dimension(80, 30));
+                deleteBtn.addActionListener(e -> {
+                    int confirm = JOptionPane.showConfirmDialog(this,
+                            "Are you sure you want to permanently delete \"" + el.getTitle() + "\"?\nAll associated candidate and ballot records will be removed.",
+                            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        electionDAO.deleteElection(el.getId());
+                        refreshAllData();
+                    }
+                });
+
+                actions.add(toggleBtn);
+                actions.add(resultsBtn);
+                actions.add(deleteBtn);
+                card.add(actions, BorderLayout.SOUTH);
 
                 electionsCardsContainer.add(card);
                 electionsCardsContainer.add(Box.createVerticalStrut(10));
