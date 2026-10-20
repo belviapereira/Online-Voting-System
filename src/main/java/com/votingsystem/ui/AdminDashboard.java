@@ -513,11 +513,11 @@ public class AdminDashboard extends JFrame {
         dashElectionsListContainer.setLayout(new BoxLayout(dashElectionsListContainer, BoxLayout.Y_AXIS));
         dashElectionsListContainer.setOpaque(false);
 
-        JScrollPane elScroll = new JScrollPane(dashElectionsListContainer);
-        elScroll.setOpaque(false);
-        elScroll.getViewport().setOpaque(false);
-        elScroll.setBorder(null);
-        electionsCard.add(elScroll, BorderLayout.CENTER);
+        // No scroll pane — let rows stack naturally inside the card without scrollbars
+        JPanel elScrollWrapper = new JPanel(new BorderLayout());
+        elScrollWrapper.setOpaque(false);
+        elScrollWrapper.add(dashElectionsListContainer, BorderLayout.NORTH);
+        electionsCard.add(elScrollWrapper, BorderLayout.CENTER);
 
         splitRow.add(electionsCard);
 
@@ -1649,6 +1649,44 @@ public class AdminDashboard extends JFrame {
                 card.setBorder(new EmptyBorder(14, 18, 14, 18));
                 card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
 
+                // Fixed-size actions panel on the EAST — always fully visible
+                JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+                actions.setOpaque(false);
+
+                PillButton toggleBtn = new PillButton(el.isActive() ? "Conclude Election" : "Reopen Election", PillButton.Style.OUTLINE);
+                toggleBtn.setPreferredSize(new Dimension(148, 32));
+                toggleBtn.addActionListener(e -> {
+                    electionDAO.toggleElectionStatus(el.getId(), !el.isActive());
+                    refreshAllData();
+                });
+
+                PillButton resultsBtn = new PillButton("View Analytics", PillButton.Style.GRADIENT);
+                resultsBtn.setPreferredSize(new Dimension(128, 32));
+                resultsBtn.addActionListener(e -> {
+                    analyticsElectionCombo.setSelectedItem(el);
+                    setActiveNav("RESULTS");
+                });
+
+                PillButton deleteBtn = new PillButton("Delete", PillButton.Style.OUTLINE);
+                deleteBtn.setPreferredSize(new Dimension(76, 32));
+                deleteBtn.addActionListener(e -> {
+                    int confirm = JOptionPane.showConfirmDialog(this,
+                            "Are you sure you want to permanently delete \"" + el.getTitle() + "\"?\nAll associated candidate and ballot records will be removed.",
+                            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                    if (confirm == JOptionPane.YES_OPTION) {
+                        electionDAO.deleteElection(el.getId());
+                        refreshAllData();
+                    }
+                });
+
+                actions.add(toggleBtn);
+                actions.add(resultsBtn);
+                actions.add(deleteBtn);
+                // Give actions a fixed preferred width so BorderLayout reserves it reliably
+                actions.setPreferredSize(new Dimension(380, 38));
+                card.add(actions, BorderLayout.EAST);
+
+                // Info panel takes only remaining space — truncates gracefully on narrow windows
                 JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 4));
                 info.setOpaque(false);
 
@@ -1674,41 +1712,7 @@ public class AdminDashboard extends JFrame {
                 info.add(status);
                 info.add(votesLbl);
 
-                card.add(info, BorderLayout.WEST);
-
-                JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
-                actions.setOpaque(false);
-
-                PillButton toggleBtn = new PillButton(el.isActive() ? "Conclude Election" : "Reopen Election", PillButton.Style.OUTLINE);
-                toggleBtn.setPreferredSize(new Dimension(140, 32));
-                toggleBtn.addActionListener(e -> {
-                    electionDAO.toggleElectionStatus(el.getId(), !el.isActive());
-                    refreshAllData();
-                });
-
-                PillButton resultsBtn = new PillButton("View Analytics", PillButton.Style.GRADIENT);
-                resultsBtn.setPreferredSize(new Dimension(130, 32));
-                resultsBtn.addActionListener(e -> {
-                    analyticsElectionCombo.setSelectedItem(el);
-                    setActiveNav("RESULTS");
-                });
-
-                PillButton deleteBtn = new PillButton("Delete", PillButton.Style.OUTLINE);
-                deleteBtn.setPreferredSize(new Dimension(80, 32));
-                deleteBtn.addActionListener(e -> {
-                    int confirm = JOptionPane.showConfirmDialog(this,
-                            "Are you sure you want to permanently delete \"" + el.getTitle() + "\"?\nAll associated candidate and ballot records will be removed.",
-                            "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-                    if (confirm == JOptionPane.YES_OPTION) {
-                        electionDAO.deleteElection(el.getId());
-                        refreshAllData();
-                    }
-                });
-
-                actions.add(toggleBtn);
-                actions.add(resultsBtn);
-                actions.add(deleteBtn);
-                card.add(actions, BorderLayout.EAST);
+                card.add(info, BorderLayout.CENTER);
 
                 electionsCardsContainer.add(card);
                 electionsCardsContainer.add(Box.createVerticalStrut(10));
